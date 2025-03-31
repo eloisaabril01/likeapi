@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify
 import asyncio
 from Crypto.Cipher import AES
@@ -92,9 +93,35 @@ async def send_multiple_requests(uid, server_name, url):
         if tokens is None:
             app.logger.error("Failed to load tokens.")
             return None
-        for i in range(100):
-            token = tokens[i % len(tokens)]["token"]
-            tasks.append(send_request(encrypted_uid, token, url))
+        
+        import random
+        tasks = []
+        total_tokens = len(tokens)
+        
+        # First 100 tokens (or all if less than 100)
+        first_batch = tokens[:100] if total_tokens > 100 else tokens
+        for token_data in first_batch:
+            token = token_data["token"]
+            for _ in range(30):
+                tasks.append(send_request(encrypted_uid, token, url))
+        
+        # Next 30 tokens if available
+        if total_tokens > 100:
+            next_batch = tokens[100:130]
+            for token_data in next_batch:
+                token = token_data["token"]
+                for _ in range(30):
+                    tasks.append(send_request(encrypted_uid, token, url))
+        
+        # If more tokens available, randomly select 100 tokens
+        if total_tokens > 130:
+            remaining_tokens = tokens[130:]
+            random_tokens = random.sample(remaining_tokens, min(100, len(remaining_tokens)))
+            for token_data in random_tokens:
+                token = token_data["token"]
+                for _ in range(30):
+                    tasks.append(send_request(encrypted_uid, token, url))
+        
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
     except Exception as e:
